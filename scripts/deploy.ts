@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import bytecode from '../build/Pure.bytecode.json';
+import bytecode from '../build/Pure/Pure.bytecode.json';
 
 const deploy = async () => {
   const Contract = await ethers.getContractFactory([], bytecode);

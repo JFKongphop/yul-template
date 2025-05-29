@@ -4,24 +4,26 @@ const solc = require('solc');
 
 const contract = process.argv[2];
 
+console.log(contract);
+
 if (!contract) {
   console.log('Invalid contract');
   process.exit(1);
 }
 
-const outputPath = path.resolve(
-  __dirname,
-  '..',
-  'build',
-  `${contract}.bytecode.json`,
-);
+const buildDir = path.resolve(__dirname, '..', 'build', contract);
+
+if (!fs.existsSync(buildDir)) {
+  fs.mkdirSync(buildDir, { recursive: true });
+}
+
+const outputBytecodePath = path.join(buildDir, `${contract}.bytecode.json`);
+const outputOpcodesPath = path.join(buildDir, `${contract}.opcode.txt`);
 
 const inputPath = path.resolve(__dirname, '..', 'contracts', `${contract}.yul`);
 const source = fs.readFileSync(inputPath, 'utf-8');
 
-const key = `${contract}.sol`;
-
-var input = {
+const input = {
   language: 'Yul',
   sources: {
     key: {
@@ -38,15 +40,17 @@ var input = {
 };
 
 const compiledContract = solc.compile(JSON.stringify(input));
-const bytecode = JSON
-  .parse(compiledContract)
-  .contracts
-  .key
-  [contract]
-  .evm
-  .bytecode
-  .object;
+const parsed = JSON.parse(compiledContract);
 
-fs.writeFile(outputPath, JSON.stringify(bytecode), (_) => {});
+if (JSON.parse(compiledContract).errors.length) throw new Error("Invalid compile contract");
 
-console.log('Compiled');
+
+const { object: bytecode, opcodes } = parsed.contracts.key[contract].evm.bytecode;
+
+const lines = opcodes.trim().split(/\s+/);
+const output = lines.join('\n');
+
+fs.writeFileSync(outputBytecodePath, JSON.stringify(bytecode));
+fs.writeFileSync(outputOpcodesPath, output);
+
+console.log('Compiled and saved to:', buildDir);
